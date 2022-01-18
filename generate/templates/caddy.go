@@ -19,9 +19,9 @@ apps:
         listen: [":443"]
         routes:
           - match:
-              - tls:
-                  sni:
-					- "{{.TURNDomain}}"
+            - tls:
+                sni:
+                  - "{{.TURNDomain}}"
             handle:
               - handler: tls
               - handler: proxy
@@ -30,7 +30,7 @@ apps:
           - match:
               - tls:
                   sni:
-					- "{{.Domain}}"
+                    - "{{.Domain}}"
             handle:
               - handler: tls
                 connection_policies:

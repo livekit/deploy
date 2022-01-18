@@ -68,7 +68,7 @@ func generateProduction() error {
 	}
 	versionPrompt := promptui.SelectWithAdd{
 		Label:    "LiveKit version",
-		Items:    []string{version},
+		Items:    []string{"latest", version},
 		AddLabel: "custom",
 		Validate: validateVersion,
 	}
@@ -127,7 +127,23 @@ func generateProduction() error {
 		}
 	}
 
+	printInstructions(&opts)
+
 	return nil
+}
+
+func printInstructions(opts *Options) {
+	fmt.Println("Your production config files are generated in directory:", opts.Domain)
+	fmt.Println()
+	fmt.Printf("Please point DNS for %s and %s to the IP address of your server.\n", opts.Domain, opts.TURNDomain)
+	fmt.Println("Once started, Caddy will automatically acquire TLS certificates for the domains.")
+	fmt.Println()
+	if opts.CloudInit != CloudInitNo {
+		fmt.Printf("The file \"cloud-init.%s.yaml\" contains the user-data script that can be used when starting the VM.\n", opts.CloudInit)
+	} else {
+		fmt.Println("You can copy the folder to your server and run: \"docker-compose up\"")
+	}
+	fmt.Println()
 }
 
 func validateDomain(domain string) error {
@@ -170,6 +186,13 @@ func generateLiveKit(opts *Options, baseDir string) error {
 			ICEPortRangeEnd:   60000,
 		},
 		Port: 7880,
+		TURN: config.TURNConfig{
+			Enabled:     true,
+			Domain:      opts.TURNDomain,
+			ExternalTLS: true,
+			TLSPort:     5349,
+			UDPPort:     443,
+		},
 	}
 	if opts.LocalRedis {
 		conf.Redis = config.RedisConfig{
@@ -261,7 +284,11 @@ func generateCloudInit(opts *Options, baseDir string) error {
 	// system service
 	content.SystemService = prefixLines(templates.SystemdService, indent)
 
-	tmpl, err := template.New("cloud-init").Parse(templates.CloudInitUbuntuTemplate)
+	templateContent := templates.CloudInitUbuntuTemplate
+	if opts.CloudInit == CloudInitAmazon {
+		templateContent = templates.CloudInitAmazon2Template
+	}
+	tmpl, err := template.New("cloud-init").Parse(templateContent)
 	if err != nil {
 		return err
 	}

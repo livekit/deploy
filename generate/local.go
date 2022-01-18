@@ -51,8 +51,8 @@ func generateLocal() error {
 		return err
 	}
 
-	ip := "<machine-ip>"
-	if len(ips) > 0 {
+	ip := "127.0.0.1"
+	if !isDocker() && len(ips) > 0 {
 		ip = ips[0]
 	}
 
@@ -84,7 +84,12 @@ func generateLocal() error {
 	fmt.Println("    --config /livekit.yaml \\")
 	fmt.Println("    --node-ip=" + ip)
 	fmt.Println()
-	fmt.Println("Then connect using this test access token: " + jwt)
+	if isDocker() {
+		fmt.Println("Note: --node-ip needs to be reachable by the client. 127.0.0.1 is accessible only to the current machine")
+		fmt.Println()
+	}
+
+	fmt.Println("Here's a test token generated with your keys: " + jwt)
 	fmt.Println()
 	fmt.Println("Access tokens identifies the participant as well as the room it's connecting to")
 	return nil

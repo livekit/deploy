@@ -11,7 +11,8 @@ import (
 )
 
 const (
-	filePerms = 0644
+	filePerms    = 0644
+	dockerOutput = "/output"
 )
 
 func init() {
@@ -46,8 +47,13 @@ func startGenerator(c *cli.Context) error {
 
 // map differences between docker environment
 func outputPath(file string) string {
-	if _, err := os.Stat("/.dockerenv"); err != nil {
+	if !isDocker() {
 		return file
 	}
-	return path.Join("/output", file)
+	return path.Join(dockerOutput, file)
+}
+
+func isDocker() bool {
+	_, err := os.Stat("/.dockerenv")
+	return err == nil
 }

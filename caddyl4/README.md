@@ -1,4 +1,4 @@
-# Caddy L4 build
+# Caddy with Layer4
 
 This directory contains Docker build script for Caddy with layer4 support.
 

@@ -40,7 +40,7 @@ func generateLocal() error {
 	if err != nil {
 		return err
 	}
-	err = os.WriteFile(outputPath("livekit.yaml"), data, 0644)
+	err = os.WriteFile(outputPath("livekit.yaml"), data, filePerms)
 	if err != nil {
 		return err
 	}

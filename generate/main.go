@@ -10,6 +10,10 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+const (
+	filePerms = 0644
+)
+
 func init() {
 	rand.Seed(time.Now().Unix())
 }

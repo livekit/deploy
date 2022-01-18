@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/google/go-github/v42 v42.0.0
-	github.com/livekit/livekit-server v0.15.2
+	github.com/livekit/livekit-server v0.15.3-0.20220118075404-88cad8f09301
 	github.com/livekit/protocol v0.11.11-0.20220113222200-a4208afda1fd
 	github.com/manifoldco/promptui v0.9.0
 	github.com/urfave/cli/v2 v2.3.0
@@ -43,7 +43,7 @@ require (
 	github.com/pion/transport v0.13.0 // indirect
 	github.com/pion/turn/v2 v2.0.6 // indirect
 	github.com/pion/udp v0.1.1 // indirect
-	github.com/pion/webrtc/v3 v3.1.15 // indirect
+	github.com/pion/webrtc/v3 v3.1.16 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/client_golang v1.11.0 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
@@ -57,5 +57,3 @@ require (
 	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
 )
-
-replace github.com/livekit/livekit-server => ../livekit-server

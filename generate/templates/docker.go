@@ -10,15 +10,15 @@ services:
     restart: unless-stopped
     network_mode: "host"
     volumes:
-      - $PWD/caddy.yaml:/etc/caddy.yaml
-      - $PWD/caddy_data:/data
+      - ./caddy.yaml:/etc/caddy.yaml
+      - ./caddy_data:/data
   livekit:
     image: livekit/livekit-server:{{.ServerVersion}}
     command: --config /etc/livekit.yaml
     restart: unless-stopped
     network_mode: "host"
     volumes:
-      - $PWD/livekit.yaml:/etc/livekit.yaml
+      - ./livekit.yaml:/etc/livekit.yaml
 `
 
 const DockerComposeRedis = `  redis:
@@ -26,5 +26,5 @@ const DockerComposeRedis = `  redis:
     command: redis-server /etc/redis.conf
     network_mode: "host"
     volumes:
-      - $PWD/redis.conf:/etc/redis.conf
+      - ./redis.conf:/etc/redis.conf
 `

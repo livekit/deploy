@@ -25,7 +25,7 @@ var (
 
 func generateProduction() error {
 	fmt.Println("Generating config for production LiveKit deployment")
-	fmt.Println("This deployment will utilize docker-compose and Caddy. It'll be secured automatically with Caddy's built-in TLS")
+	fmt.Println("This deployment will utilize docker-compose and Caddy. It'll set up a secure LiveKit installation with built-in TURN/TLS")
 	fmt.Println()
 	opts := Options{}
 	var err error
@@ -111,7 +111,8 @@ func generateProduction() error {
 	opts.CloudInit = CloudInitKind(cloudKind)
 
 	// generate files
-	if err = generateLiveKit(&opts, baseDir); err != nil {
+	conf, err := generateLiveKit(&opts, baseDir)
+	if err != nil {
 		return err
 	}
 	if err = generateCaddy(&opts, baseDir); err != nil {
@@ -127,23 +128,30 @@ func generateProduction() error {
 		}
 	}
 
-	printInstructions(&opts)
+	printInstructions(&opts, conf)
 
 	return nil
 }
 
-func printInstructions(opts *Options) {
+func printInstructions(opts *Options, conf *config.Config) {
 	fmt.Println("Your production config files are generated in directory:", opts.Domain)
 	fmt.Println()
 	fmt.Printf("Please point DNS for %s and %s to the IP address of your server.\n", opts.Domain, opts.TURNDomain)
 	fmt.Println("Once started, Caddy will automatically acquire TLS certificates for the domains.")
 	fmt.Println()
 	if opts.CloudInit != CloudInitNo {
-		fmt.Printf("The file \"cloud-init.%s.yaml\" contains the user-data script that can be used when starting the VM.\n", opts.CloudInit)
+		fmt.Printf("The file \"cloud-init.%s.yaml\" contains a script that can be used in the \"user-data\" field when starting a new VM.\n", opts.CloudInit)
 	} else {
 		fmt.Println("You can copy the folder to your server and run: \"docker-compose up\"")
 	}
 	fmt.Println()
+
+	fmt.Println("Please ensure the following ports are accessible on the server")
+	fmt.Println(" * 443 - primary HTTPS and TURN/TLS")
+	fmt.Println(" * 80 - for TLS issuance")
+	fmt.Println(" * 7882 - for WebRTC over TCP")
+	fmt.Println(" * 443/UDP - for TURN/UDP")
+	fmt.Println(" * 50000-60000/UDP - for WebRTC over UDP")
 }
 
 func validateDomain(domain string) error {
@@ -169,7 +177,7 @@ func getLatestVersion() (string, error) {
 	return release.GetTagName(), nil
 }
 
-func generateLiveKit(opts *Options, baseDir string) error {
+func generateLiveKit(opts *Options, baseDir string) (*config.Config, error) {
 	apiKey := utils.NewGuid(utils.APIKeyPrefix)
 	apiSecret := utils.RandomSecret()
 	conf := config.Config{
@@ -201,7 +209,7 @@ func generateLiveKit(opts *Options, baseDir string) error {
 		// copy redis over to basedir
 		opts.Files.RedisConf = path.Join(baseDir, "redis.conf")
 		if err := os.WriteFile(opts.Files.RedisConf, []byte(templates.RedisConf), filePerms); err != nil {
-			return err
+			return nil, err
 		}
 	} else {
 		conf.Redis = config.RedisConfig{
@@ -212,10 +220,10 @@ func generateLiveKit(opts *Options, baseDir string) error {
 	// write config
 	data, err := yaml.Marshal(&conf)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	opts.Files.LiveKit = path.Join(baseDir, "livekit.yaml")
-	return os.WriteFile(opts.Files.LiveKit, data, filePerms)
+	return &conf, os.WriteFile(opts.Files.LiveKit, data, filePerms)
 }
 
 func generateCaddy(opts *Options, baseDir string) error {

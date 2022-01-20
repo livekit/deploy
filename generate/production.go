@@ -26,11 +26,12 @@ var (
 func generateProduction() error {
 	fmt.Println("Generating config for production LiveKit deployment")
 	fmt.Println("This deployment will utilize docker-compose and Caddy. It'll set up a secure LiveKit installation with built-in TURN/TLS")
+	fmt.Println("SSL Certificates for HTTPS and TURN/TLS will be generated automatically via Lets Encrypt.")
 	fmt.Println()
 	opts := Options{}
 	var err error
 	prompt := promptui.Prompt{
-		Label:    "Primary domain name",
+		Label:    "Primary domain name (i.e. livekit.myhost.com)",
 		Validate: validateDomain,
 		Stdout:   BellSkipper,
 	}
@@ -45,7 +46,7 @@ func generateProduction() error {
 	}
 
 	prompt = promptui.Prompt{
-		Label: "TURN domain name",
+		Label: "TURN domain name (i.e. livekit-turn.myhost.com)",
 		Validate: func(s string) error {
 			if err := validateDomain(s); err != nil {
 				return err
@@ -81,7 +82,7 @@ func generateProduction() error {
 	redisPrompt := promptui.Select{
 		Label: "Use external Redis",
 		Items: []string{
-			"no - Redis will be included in the setup",
+			"no - (we'll bundle Redis)",
 			"yes",
 		},
 		Stdout: BellSkipper,
@@ -94,21 +95,29 @@ func generateProduction() error {
 		opts.LocalRedis = true
 	}
 
+	startupScripts := []StartupScriptKind{
+		StartupScriptShellScript,
+		StartupScriptCloudInitAmazon,
+		StartupScriptCloudInitUbuntu,
+		StartupScriptNone,
+	}
+	var descriptions []string
+
+	for _, s := range startupScripts {
+		descriptions = append(descriptions, s.Description())
+	}
+
 	// cloud init
 	cloudPrompt := promptui.Select{
-		Label: "Generate cloud-init?",
-		Items: []CloudInitKind{
-			CloudInitNo,
-			CloudInitAmazon,
-			CloudInitUbuntu,
-		},
+		Label:  "Generate a startup script? It'll write configuration files to the right spots on the server.",
+		Items:  descriptions,
 		Stdout: BellSkipper,
 	}
-	_, cloudKind, err := cloudPrompt.Run()
+	idx, _, err = cloudPrompt.Run()
 	if err != nil {
 		return err
 	}
-	opts.CloudInit = CloudInitKind(cloudKind)
+	opts.CloudInit = startupScripts[idx]
 
 	// generate files
 	conf, err := generateLiveKit(&opts, baseDir)
@@ -122,25 +131,24 @@ func generateProduction() error {
 		return err
 	}
 
-	if opts.CloudInit != CloudInitNo {
-		if err = generateCloudInit(&opts, baseDir); err != nil {
+	if opts.CloudInit != StartupScriptNone {
+		if err = generateStartupScript(&opts, baseDir); err != nil {
 			return err
 		}
 	}
 
-	printInstructions(&opts, conf)
-
-	return nil
+	return printInstructions(&opts, conf)
 }
 
-func printInstructions(opts *Options, conf *config.Config) {
+func printInstructions(opts *Options, conf *config.Config) error {
 	fmt.Println("Your production config files are generated in directory:", opts.Domain)
 	fmt.Println()
 	fmt.Printf("Please point DNS for %s and %s to the IP address of your server.\n", opts.Domain, opts.TURNDomain)
 	fmt.Println("Once started, Caddy will automatically acquire TLS certificates for the domains.")
 	fmt.Println()
-	if opts.CloudInit != CloudInitNo {
-		fmt.Printf("The file \"cloud-init.%s.yaml\" contains a script that can be used in the \"user-data\" field when starting a new VM.\n", opts.CloudInit)
+	if opts.CloudInit != StartupScriptNone {
+		fmt.Printf("The file \"%s\" is a script that can be used in the \"user-data\" field when starting a new VM.\n",
+			string(opts.CloudInit))
 	} else {
 		fmt.Println("You can copy the folder to your server and run: \"docker-compose up\"")
 	}
@@ -149,9 +157,16 @@ func printInstructions(opts *Options, conf *config.Config) {
 	fmt.Println("Please ensure the following ports are accessible on the server")
 	fmt.Println(" * 443 - primary HTTPS and TURN/TLS")
 	fmt.Println(" * 80 - for TLS issuance")
-	fmt.Println(" * 7882 - for WebRTC over TCP")
+	fmt.Printf(" * %d - for WebRTC over TCP\n", conf.RTC.TCPPort)
 	fmt.Println(" * 443/UDP - for TURN/UDP")
-	fmt.Println(" * 50000-60000/UDP - for WebRTC over UDP")
+	fmt.Printf(" * %d-%d/UDP - for WebRTC over UDP\n", conf.RTC.ICEPortRangeStart, conf.RTC.ICEPortRangeEnd)
+	fmt.Println()
+	var apiKey, apiSecret string
+	for k, s := range conf.Keys {
+		apiKey = k
+		apiSecret = s
+	}
+	return printKeysAndToken(apiKey, apiSecret)
 }
 
 func validateDomain(domain string) error {
@@ -255,60 +270,6 @@ func generateDocker(opts *Options, baseDir string) error {
 	}
 	opts.Files.Docker = path.Join(baseDir, "docker-compose.yaml")
 	return os.WriteFile(opts.Files.Docker, buf.Bytes(), filePerms)
-}
-
-type cloudInitContent struct {
-	LiveKitConfig       string
-	CaddyConfig         string
-	DockerComposeConfig string
-	SystemService       string
-	RedisConf           string
-}
-
-func generateCloudInit(opts *Options, baseDir string) error {
-	if opts.CloudInit == CloudInitNo {
-		return nil
-	}
-
-	// prep files
-	var err error
-	content := cloudInitContent{}
-	// six space indent for yaml
-	indent := "      "
-	if content.LiveKitConfig, err = readAndPrefix(opts.Files.LiveKit, indent); err != nil {
-		return err
-	}
-	if content.CaddyConfig, err = readAndPrefix(opts.Files.Caddy, indent); err != nil {
-		return err
-	}
-	if content.DockerComposeConfig, err = readAndPrefix(opts.Files.Docker, indent); err != nil {
-		return err
-	}
-	if opts.LocalRedis {
-		if content.RedisConf, err = readAndPrefix(opts.Files.RedisConf, indent); err != nil {
-			return err
-		}
-	}
-	// system service
-	content.SystemService = prefixLines(templates.SystemdService, indent)
-
-	templateContent := templates.CloudInitUbuntuTemplate
-	if opts.CloudInit == CloudInitAmazon {
-		templateContent = templates.CloudInitAmazon2Template
-	}
-	tmpl, err := template.New("cloud-init").Parse(templateContent)
-	if err != nil {
-		return err
-	}
-
-	target := path.Join(baseDir, fmt.Sprintf("cloud-init.%s.yaml", opts.CloudInit))
-	f, err := os.Create(target)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	return tmpl.Execute(f, &content)
 }
 
 func readAndPrefix(filePath string, prefix string) (string, error) {

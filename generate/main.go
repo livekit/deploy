@@ -7,6 +7,7 @@ import (
 	"path"
 	"time"
 
+	"github.com/livekit/protocol/auth"
 	"github.com/urfave/cli/v2"
 )
 
@@ -43,6 +44,28 @@ func startGenerator(c *cli.Context) error {
 		return generateLocal()
 	}
 	return generateProduction()
+}
+
+func printKeysAndToken(apiKey, apiSecret string) error {
+	token := auth.NewAccessToken(apiKey, apiSecret)
+	token.SetIdentity("tony_stark")
+	token.SetName("Tony Stark")
+	token.AddGrant(&auth.VideoGrant{
+		Room:     "stark-tower",
+		RoomJoin: true,
+	})
+	token.SetValidFor(10000 * time.Hour)
+	jwt, err := token.ToJWT()
+	if err != nil {
+		return err
+	}
+	fmt.Println("API Key: " + apiKey)
+	fmt.Println("API Secret: " + apiSecret)
+	fmt.Println()
+	fmt.Println("Here's a test token generated with your keys: " + jwt)
+	fmt.Println()
+	fmt.Println("An access token identifies the participant as well as the room it's connecting to")
+	return nil
 }
 
 // map differences between docker environment

@@ -3,10 +3,8 @@ package main
 import (
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/livekit/livekit-server/pkg/config"
-	"github.com/livekit/protocol/auth"
 	"github.com/livekit/protocol/utils"
 	"gopkg.in/yaml.v3"
 )
@@ -56,23 +54,7 @@ func generateLocal() error {
 		ip = ips[0]
 	}
 
-	// generate token
-	token := auth.NewAccessToken(apiKey, apiSecret)
-	token.SetIdentity("tony_stark")
-	token.SetName("Tony Stark")
-	token.AddGrant(&auth.VideoGrant{
-		Room:     "stark-tower",
-		RoomJoin: true,
-	})
-	token.SetValidFor(10000 * time.Hour)
-	jwt, err := token.ToJWT()
-	if err != nil {
-		return err
-	}
-
 	fmt.Println("Generated livekit.yaml that's suitable for local testing")
-	fmt.Println("API Key: " + apiKey)
-	fmt.Println("API Secret: " + apiSecret)
 	fmt.Println()
 	fmt.Println("Start LiveKit with:")
 	fmt.Println("docker run --rm \\")
@@ -89,8 +71,5 @@ func generateLocal() error {
 		fmt.Println()
 	}
 
-	fmt.Println("Here's a test token generated with your keys: " + jwt)
-	fmt.Println()
-	fmt.Println("Access tokens identifies the participant as well as the room it's connecting to")
-	return nil
+	return printKeysAndToken(apiKey, apiSecret)
 }

@@ -1,13 +1,13 @@
 package templates
 
-const SystemdService = `[Unit]
+const SystemdServiceTemplate = `[Unit]
 Description=LiveKit Server Container
 After=docker.service
 Requires=docker.service
 
 [Service]
 Restart=always
-WorkingDirectory=/opt/livekit
+WorkingDirectory={{.InstallPrefix}}
 # Shutdown container (if running) when unit is started
 ExecStartPre=/usr/local/bin/docker-compose -f docker-compose.yaml down
 ExecStart=/usr/local/bin/docker-compose -f docker-compose.yaml up

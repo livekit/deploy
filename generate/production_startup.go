@@ -16,6 +16,7 @@ type cloudInitContent struct {
 	DockerComposeConfig string
 	SystemService       string
 	RedisConf           string
+	UpdateIPScript      string
 }
 
 func generateStartupScript(opts *Options, baseDir string) error {
@@ -26,7 +27,8 @@ func generateStartupScript(opts *Options, baseDir string) error {
 	// prep files
 	var err error
 	content := cloudInitContent{
-		InstallPrefix: "/opt/livekit",
+		InstallPrefix:  "/opt/livekit",
+		UpdateIPScript: templates.UpdateIPScript,
 	}
 	// six space indent for yaml types
 	indent := "      "
@@ -47,6 +49,7 @@ func generateStartupScript(opts *Options, baseDir string) error {
 			return err
 		}
 	}
+	content.UpdateIPScript = prefixLines(templates.UpdateIPScript, indent)
 
 	// system service
 	tmpl, err := template.New("systemd").Parse(templates.SystemdServiceTemplate)

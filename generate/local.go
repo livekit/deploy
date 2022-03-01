@@ -71,5 +71,6 @@ func generateLocal() error {
 		fmt.Println()
 	}
 
+	fmt.Println("Server URL: ", "ws://localhost:7880")
 	return printKeysAndToken(apiKey, apiSecret)
 }

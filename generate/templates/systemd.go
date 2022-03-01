@@ -6,6 +6,7 @@ After=docker.service
 Requires=docker.service
 
 [Service]
+LimitNOFILE=500000
 Restart=always
 WorkingDirectory={{.InstallPrefix}}
 # Shutdown container (if running) when unit is started

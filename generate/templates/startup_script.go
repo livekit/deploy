@@ -27,6 +27,11 @@ cat << EOF > {{.InstallPrefix}}/caddy.yaml
 {{.CaddyConfig}}
 EOF
 
+# update ip script
+cat << "EOF" > {{.InstallPrefix}}/update_ip.sh
+{{.UpdateIPScript}}
+EOF
+
 # docker compose
 cat << EOF > {{.InstallPrefix}}/docker-compose.yaml
 {{.DockerComposeConfig}}
@@ -43,6 +48,9 @@ cat << EOF > {{.InstallPrefix}}/redis.conf
 {{.RedisConf}}
 EOF
 {{- end }}
+
+chmod 755 {{.InstallPrefix}}/update_ip.sh
+{{.InstallPrefix}}/update_ip.sh
 
 systemctl enable livekit-docker
 systemctl start livekit-docker

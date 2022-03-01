@@ -161,6 +161,7 @@ func printInstructions(opts *Options, conf *config.Config) error {
 	fmt.Println(" * 443/UDP - for TURN/UDP")
 	fmt.Printf(" * %d-%d/UDP - for WebRTC over UDP\n", conf.RTC.ICEPortRangeStart, conf.RTC.ICEPortRangeEnd)
 	fmt.Println()
+	fmt.Printf("Server URL: wss://%s\n", opts.Domain)
 	var apiKey, apiSecret string
 	for k, s := range conf.Keys {
 		apiKey = k

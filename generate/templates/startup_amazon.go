@@ -21,6 +21,9 @@ write_files:
   - path: {{.InstallPrefix}}/caddy.yaml
     content: |
 {{.CaddyConfig}}
+  - path: {{.InstallPrefix}}/update_ip.sh
+    content: |
+{{.UpdateIPScript}}
   - path: {{.InstallPrefix}}/docker-compose.yaml
     content: |
 {{.DockerComposeConfig}}
@@ -36,6 +39,8 @@ write_files:
 runcmd:
   - curl -L "https://github.com/docker/compose/releases/download/v2.2.3/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
   - chmod 755 /usr/local/bin/docker-compose
+  - chmod 755 {{.InstallPrefix}}/update_ip.sh
+  - {{.InstallPrefix}}/update_ip.sh
   - systemctl enable docker
   - systemctl start docker
   - systemctl enable livekit-docker

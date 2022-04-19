@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"os"
 
+	"gopkg.in/yaml.v3"
+
 	"github.com/livekit/livekit-server/pkg/config"
 	"github.com/livekit/protocol/utils"
-	"gopkg.in/yaml.v3"
 )
 
 func generateLocal() error {
@@ -43,17 +44,6 @@ func generateLocal() error {
 		return err
 	}
 
-	// get local ip
-	ips, err := config.GetLocalIPAddresses()
-	if err != nil {
-		return err
-	}
-
-	ip := "127.0.0.1"
-	if !isDocker() && len(ips) > 0 {
-		ip = ips[0]
-	}
-
 	fmt.Println("Generated livekit.yaml that's suitable for local testing")
 	fmt.Println()
 	fmt.Println("Start LiveKit with:")
@@ -63,13 +53,8 @@ func generateLocal() error {
 	fmt.Println("    -p 7882:7882/udp \\")
 	fmt.Println("    -v $PWD/livekit.yaml:/livekit.yaml \\")
 	fmt.Println("    livekit/livekit-server \\")
-	fmt.Println("    --config /livekit.yaml \\")
-	fmt.Println("    --node-ip=" + ip)
+	fmt.Println("    --config /livekit.yaml")
 	fmt.Println()
-	if isDocker() {
-		fmt.Println("Note: --node-ip needs to be reachable by the client. 127.0.0.1 is accessible only to the current machine")
-		fmt.Println()
-	}
 
 	fmt.Println("Server URL: ", "ws://localhost:7880")
 	return printKeysAndToken(apiKey, apiSecret)

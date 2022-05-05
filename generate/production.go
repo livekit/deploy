@@ -19,7 +19,7 @@ import (
 )
 
 var (
-	domainRegexp  = regexp.MustCompile(`^(?:[_a-z0-9](?:[_a-z0-9-]{0,61}[a-z0-9])?\.)+(?:[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?)?$`)
+	domainRegexp  = regexp.MustCompile(`^(?:[_A-Za-z0-9](?:[_A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+(?:[A-Za-z](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)?$`)
 	versionRegexp = regexp.MustCompile(`^v[0-9]+(\.[0-9]+){0,2}$`)
 )
 

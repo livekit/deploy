@@ -7,8 +7,9 @@ import (
 	"path"
 	"time"
 
-	"github.com/livekit/protocol/auth"
 	"github.com/urfave/cli/v2"
+
+	"github.com/livekit/protocol/auth"
 )
 
 const (
@@ -78,5 +79,12 @@ func outputPath(file string) string {
 
 func isDocker() bool {
 	_, err := os.Stat("/.dockerenv")
-	return err == nil
+	if err == nil {
+		return true
+	}
+	_, err = os.Stat("/run/.containerenv")
+	if err == nil {
+		return true
+	}
+	return false
 }

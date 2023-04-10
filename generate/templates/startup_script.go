@@ -12,7 +12,7 @@ mkdir -p /usr/local/bin
 # Docker & Docker Compose will need to be installed on the machine
 curl -fsSL https://get.docker.com -o /tmp/get-docker.sh
 sh /tmp/get-docker.sh
-curl -L "https://github.com/docker/compose/releases/download/v2.2.3/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+curl -L "https://github.com/docker/compose/releases/download/v2.17.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
 chmod 755 /usr/local/bin/docker-compose
 
 sudo systemctl enable docker
@@ -46,6 +46,20 @@ EOF
 # redis config
 cat << EOF > {{.InstallPrefix}}/redis.conf
 {{.RedisConf}}
+EOF
+{{- end }}
+
+{{- if .EgressConf }}
+# egress config
+cat << EOF > {{.InstallPrefix}}/egress.yaml
+{{.EgressConf}}
+EOF
+{{- end }}
+
+{{- if .IngressConf }}
+# ingress config
+cat << EOF > {{.InstallPrefix}}/ingress.yaml
+{{.IngressConf}}
 EOF
 {{- end }}
 

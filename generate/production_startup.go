@@ -16,10 +16,12 @@ type cloudInitContent struct {
 	DockerComposeConfig string
 	SystemService       string
 	RedisConf           string
+	EgressConf          string
+	IngressConf         string
 	UpdateIPScript      string
 }
 
-func generateStartupScript(opts *Options, baseDir string) error {
+func generateStartupScript(opts *ServerOptions, baseDir string) error {
 	if opts.CloudInit == StartupScriptNone {
 		return nil
 	}
@@ -46,6 +48,16 @@ func generateStartupScript(opts *Options, baseDir string) error {
 	}
 	if opts.LocalRedis {
 		if content.RedisConf, err = readAndPrefix(opts.Files.RedisConf, indent); err != nil {
+			return err
+		}
+	}
+	if opts.IncludeEgress {
+		if content.EgressConf, err = readAndPrefix(opts.Files.Egress, indent); err != nil {
+			return err
+		}
+	}
+	if opts.IncludeIngress {
+		if content.IngressConf, err = readAndPrefix(opts.Files.Ingress, indent); err != nil {
 			return err
 		}
 	}

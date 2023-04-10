@@ -13,6 +13,13 @@ apps:
       automate:
         - {{.Domain}}
         - {{.TURNDomain}}
+{{- if .ZeroSSLAPIKey }}
+    automation:
+      policies:
+        - issuers:
+          - module: zerossl
+            api_key: {{.ZeroSSLAPIKey}}
+{{- end }}
   layer4:
     servers:
       main:

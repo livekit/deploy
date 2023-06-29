@@ -59,6 +59,7 @@ type ServerOptions struct {
 	IncludeIngress bool
 	Domain         string
 	TURNDomain     string
+	WHIPDomain     string // optional, only if WHIP is desired
 	ServerVersion  string
 	ZeroSSLAPIKey  string
 	LocalRedis     bool

@@ -7,6 +7,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/livekit/livekit-server/pkg/config"
+	"github.com/livekit/mediatransportutil/pkg/rtcconfig"
 	"github.com/livekit/protocol/logger"
 	"github.com/livekit/protocol/utils"
 )
@@ -26,9 +27,11 @@ func generateLocal() error {
 		},
 		Port: 7880,
 		RTC: config.RTCConfig{
-			TCPPort:       7881,
-			UDPPort:       7882,
-			UseExternalIP: false,
+			RTCConfig: rtcconfig.RTCConfig{
+				TCPPort:       7881,
+				UDPPort:       7882,
+				UseExternalIP: false,
+			},
 		},
 	}
 
@@ -48,7 +51,7 @@ func generateLocal() error {
 	}
 
 	// get local ip
-	ips, err := config.GetLocalIPAddresses(false)
+	ips, err := rtcconfig.GetLocalIPAddresses(false)
 	if err != nil {
 		return err
 	}

@@ -17,6 +17,7 @@ import (
 
 	"github.com/livekit/deploy/generate/templates"
 	"github.com/livekit/livekit-server/pkg/config"
+	"github.com/livekit/mediatransportutil/pkg/rtcconfig"
 	"github.com/livekit/protocol/logger"
 	"github.com/livekit/protocol/utils"
 )
@@ -88,6 +89,28 @@ func generateProduction() error {
 	}
 	if opts.TURNDomain, err = prompt.Run(); err != nil {
 		return err
+	}
+
+	if opts.IncludeIngress {
+		prompt = promptui.Prompt{
+			Label: "Ingress WHIP domain name (optional, i.e. livekit-whip.myhost.com)",
+			Validate: func(s string) error {
+				if s == "" {
+					return nil
+				}
+				if err := validateDomain(s); err != nil {
+					return err
+				}
+				if s == opts.Domain {
+					return fmt.Errorf("cannot be same as primary domain name")
+				}
+				return nil
+			},
+			Stdout: BellSkipper,
+		}
+		if opts.WHIPDomain, err = prompt.Run(); err != nil {
+			return err
+		}
 	}
 
 	if err = selectSSLProvider(&opts); err != nil {
@@ -208,7 +231,13 @@ func selectSSLProvider(opts *ServerOptions) error {
 func printInstructions(opts *ServerOptions, conf *config.Config) error {
 	fmt.Println("Your production config files are generated in directory:", opts.Domain)
 	fmt.Println()
-	fmt.Printf("Please point DNS for %s and %s to the IP address of your server.\n", opts.Domain, opts.TURNDomain)
+	fmt.Println("Please point update DNS for the following domains to the IP address of your server.")
+	fmt.Println(" *", opts.Domain)
+	fmt.Println(" *", opts.TURNDomain)
+	if opts.IncludeIngress && opts.WHIPDomain != "" {
+		fmt.Println(" *", opts.WHIPDomain)
+	}
+
 	fmt.Println("Once started, Caddy will automatically acquire TLS certificates for the domains.")
 	fmt.Println()
 	if opts.CloudInit != StartupScriptNone {
@@ -232,10 +261,17 @@ func printInstructions(opts *ServerOptions, conf *config.Config) error {
 	fmt.Printf(" * %d-%d/UDP - for WebRTC over UDP\n", conf.RTC.ICEPortRangeStart, conf.RTC.ICEPortRangeEnd)
 	if opts.IncludeIngress {
 		fmt.Printf(" * %d - for RTMP Ingress\n", DefaultRTMPPort)
+		fmt.Printf(" * %d/UDP - for WHIP Ingress WebRTC\n", DefaultRTCUDPPort)
 	}
 
 	fmt.Println()
 	fmt.Printf("Server URL: wss://%s\n", opts.Domain)
+	if opts.IncludeIngress {
+		fmt.Printf("RTMP Ingress URL: rtmp://%s/x\n", opts.Domain)
+		if opts.WHIPDomain != "" {
+			fmt.Printf("WHIP Ingress URL: https://%s/w\n", opts.WHIPDomain)
+		}
+	}
 	var apiKey, apiSecret string
 	for k, s := range conf.Keys {
 		apiKey = k
@@ -281,10 +317,12 @@ func generateLiveKit(opts *ServerOptions, baseDir string) (*config.Config, error
 		},
 		BindAddresses: []string{""},
 		RTC: config.RTCConfig{
-			UseExternalIP:     true,
-			TCPPort:           7881,
-			ICEPortRangeStart: 50000,
-			ICEPortRangeEnd:   60000,
+			RTCConfig: rtcconfig.RTCConfig{
+				UseExternalIP:     true,
+				TCPPort:           7881,
+				ICEPortRangeStart: 50000,
+				ICEPortRangeEnd:   60000,
+			},
 		},
 		Port: 7880,
 		TURN: config.TURNConfig{
@@ -305,6 +343,11 @@ func generateLiveKit(opts *ServerOptions, baseDir string) (*config.Config, error
 	}
 	if opts.IncludeIngress {
 		conf.Ingress.RTMPBaseURL = fmt.Sprintf("rtmp://%s:%d/x", opts.Domain, DefaultRTMPPort)
+		if opts.WHIPDomain != "" {
+			conf.Ingress.WHIPBaseURL = fmt.Sprintf("https://%s/w", opts.WHIPDomain)
+		} else {
+			conf.Ingress.WHIPBaseURL = fmt.Sprintf("http://%s/w", opts.WHIPDomain)
+		}
 	}
 
 	// write config

@@ -13,6 +13,9 @@ apps:
       automate:
         - {{.Domain}}
         - {{.TURNDomain}}
+{{- if .WHIPDomain }}
+        - {{.WHIPDomain}}
+{{- end }}
 {{- if .ZeroSSLAPIKey }}
     automation:
       policies:
@@ -44,4 +47,18 @@ apps:
                   - alpn: ["http/1.1"]
               - handler: proxy
                 upstreams:
-                  - dial: ["localhost:7880"]`
+                  - dial: ["localhost:7880"]
+{{- if .WHIPDomain }}
+          - match:
+              - tls:
+                  sni:
+                    - "{{.WHIPDomain}}"
+            handle:
+              - handler: tls
+                connection_policies:
+                  - alpn: ["http/1.1"]
+              - handler: proxy
+                upstreams:
+                  - dial: ["localhost:8080"]
+{{- end }}
+`

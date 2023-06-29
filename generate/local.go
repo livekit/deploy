@@ -4,9 +4,12 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/livekit/livekit-server/pkg/config"
-	"github.com/livekit/protocol/utils"
 	"gopkg.in/yaml.v3"
+
+	"github.com/livekit/livekit-server/pkg/config"
+	"github.com/livekit/mediatransportutil/pkg/rtcconfig"
+	"github.com/livekit/protocol/logger"
+	"github.com/livekit/protocol/utils"
 )
 
 func generateLocal() error {
@@ -17,14 +20,18 @@ func generateLocal() error {
 			apiKey: apiSecret,
 		},
 		Logging: config.LoggingConfig{
-			JSON:  false,
-			Level: "info",
+			Config: logger.Config{
+				JSON:  false,
+				Level: "info",
+			},
 		},
 		Port: 7880,
 		RTC: config.RTCConfig{
-			TCPPort:       7881,
-			UDPPort:       7882,
-			UseExternalIP: false,
+			RTCConfig: rtcconfig.RTCConfig{
+				TCPPort:       7881,
+				UDPPort:       7882,
+				UseExternalIP: false,
+			},
 		},
 	}
 
@@ -44,7 +51,7 @@ func generateLocal() error {
 	}
 
 	// get local ip
-	ips, err := config.GetLocalIPAddresses()
+	ips, err := rtcconfig.GetLocalIPAddresses(false)
 	if err != nil {
 		return err
 	}

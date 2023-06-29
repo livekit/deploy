@@ -49,10 +49,10 @@ func startGenerator(c *cli.Context) error {
 
 func printKeysAndToken(apiKey, apiSecret string) error {
 	token := auth.NewAccessToken(apiKey, apiSecret)
-	token.SetIdentity("tony_stark")
-	token.SetName("Tony Stark")
+	token.SetIdentity("test-user")
+	token.SetName("Test User")
 	token.AddGrant(&auth.VideoGrant{
-		Room:     "stark-tower",
+		Room:     "my-first-room",
 		RoomJoin: true,
 	})
 	token.SetValidFor(10000 * time.Hour)

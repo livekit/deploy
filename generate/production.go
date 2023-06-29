@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -11,11 +12,14 @@ import (
 	"text/template"
 
 	"github.com/google/go-github/v42/github"
-	"github.com/livekit/deploy/generate/templates"
-	"github.com/livekit/livekit-server/pkg/config"
-	"github.com/livekit/protocol/utils"
 	"github.com/manifoldco/promptui"
 	"gopkg.in/yaml.v3"
+
+	"github.com/livekit/deploy/generate/templates"
+	"github.com/livekit/livekit-server/pkg/config"
+	"github.com/livekit/mediatransportutil/pkg/rtcconfig"
+	"github.com/livekit/protocol/logger"
+	"github.com/livekit/protocol/utils"
 )
 
 var (
@@ -26,10 +30,35 @@ var (
 func generateProduction() error {
 	fmt.Println("Generating config for production LiveKit deployment")
 	fmt.Println("This deployment will utilize docker-compose and Caddy. It'll set up a secure LiveKit installation with built-in TURN/TLS")
-	fmt.Println("SSL Certificates for HTTPS and TURN/TLS will be generated automatically via Lets Encrypt.")
+	fmt.Println("SSL Certificates for HTTPS and TURN/TLS will be generated automatically via LetsEncrypt or ZeroSSL.")
 	fmt.Println()
-	opts := Options{}
-	var err error
+	opts := ServerOptions{}
+
+	// Ingress or Egress
+	serverSelection := promptui.Select{
+		Label: "What to deploy",
+		Items: []string{
+			"LiveKit Server only",
+			"with Egress",
+			"with Ingress",
+			"with both Egress and Ingress",
+		},
+		Stdout: BellSkipper,
+	}
+	idx, _, err := serverSelection.Run()
+	if err != nil {
+		return err
+	}
+	switch idx {
+	case 1:
+		opts.IncludeEgress = true
+	case 2:
+		opts.IncludeIngress = true
+	case 3:
+		opts.IncludeEgress = true
+		opts.IncludeIngress = true
+	}
+
 	prompt := promptui.Prompt{
 		Label:    "Primary domain name (i.e. livekit.myhost.com)",
 		Validate: validateDomain,
@@ -62,6 +91,32 @@ func generateProduction() error {
 		return err
 	}
 
+	if opts.IncludeIngress {
+		prompt = promptui.Prompt{
+			Label: "Ingress WHIP domain name (optional, i.e. livekit-whip.myhost.com)",
+			Validate: func(s string) error {
+				if s == "" {
+					return nil
+				}
+				if err := validateDomain(s); err != nil {
+					return err
+				}
+				if s == opts.Domain {
+					return fmt.Errorf("cannot be same as primary domain name")
+				}
+				return nil
+			},
+			Stdout: BellSkipper,
+		}
+		if opts.WHIPDomain, err = prompt.Run(); err != nil {
+			return err
+		}
+	}
+
+	if err = selectSSLProvider(&opts); err != nil {
+		return err
+	}
+
 	// version
 	version, err := getLatestVersion()
 	if err != nil {
@@ -87,7 +142,7 @@ func generateProduction() error {
 		},
 		Stdout: BellSkipper,
 	}
-	idx, _, err := redisPrompt.Run()
+	idx, _, err = redisPrompt.Run()
 	if err != nil {
 		return err
 	}
@@ -124,6 +179,12 @@ func generateProduction() error {
 	if err != nil {
 		return err
 	}
+	if err = generateEgress(&opts, conf, baseDir); err != nil {
+		return err
+	}
+	if err = generateIngress(&opts, conf, baseDir); err != nil {
+		return err
+	}
 	if err = generateCaddy(&opts, baseDir); err != nil {
 		return err
 	}
@@ -140,10 +201,43 @@ func generateProduction() error {
 	return printInstructions(&opts, conf)
 }
 
-func printInstructions(opts *Options, conf *config.Config) error {
+func selectSSLProvider(opts *ServerOptions) error {
+	sslPrompt := promptui.Select{
+		Label: "Which SSL issuers to use?",
+		Items: []string{
+			"Let's Encrypt (no account required)",
+			"ZeroSSL (best compatibility, requires account)",
+		},
+		Stdout: BellSkipper,
+	}
+	idx, _, err := sslPrompt.Run()
+	if err != nil {
+		return err
+	}
+	if idx == 0 {
+		return nil
+	}
+
+	prompt := promptui.Prompt{
+		Label:  "ZeroSSL API Key",
+		Stdout: BellSkipper,
+	}
+	if opts.ZeroSSLAPIKey, err = prompt.Run(); err != nil && err != promptui.ErrAbort {
+		return err
+	}
+	return nil
+}
+
+func printInstructions(opts *ServerOptions, conf *config.Config) error {
 	fmt.Println("Your production config files are generated in directory:", opts.Domain)
 	fmt.Println()
-	fmt.Printf("Please point DNS for %s and %s to the IP address of your server.\n", opts.Domain, opts.TURNDomain)
+	fmt.Println("Please point update DNS for the following domains to the IP address of your server.")
+	fmt.Println(" *", opts.Domain)
+	fmt.Println(" *", opts.TURNDomain)
+	if opts.IncludeIngress && opts.WHIPDomain != "" {
+		fmt.Println(" *", opts.WHIPDomain)
+	}
+
 	fmt.Println("Once started, Caddy will automatically acquire TLS certificates for the domains.")
 	fmt.Println()
 	if opts.CloudInit != StartupScriptNone {
@@ -154,14 +248,30 @@ func printInstructions(opts *Options, conf *config.Config) error {
 	}
 	fmt.Println()
 
+	if opts.IncludeEgress || opts.IncludeIngress {
+		fmt.Println("Since you've enabled Egress/Ingress, we recommend running it on a machine with at least 4 cores")
+		fmt.Println()
+	}
+
 	fmt.Println("Please ensure the following ports are accessible on the server")
 	fmt.Println(" * 443 - primary HTTPS and TURN/TLS")
 	fmt.Println(" * 80 - for TLS issuance")
 	fmt.Printf(" * %d - for WebRTC over TCP\n", conf.RTC.TCPPort)
 	fmt.Println(" * 443/UDP - for TURN/UDP")
 	fmt.Printf(" * %d-%d/UDP - for WebRTC over UDP\n", conf.RTC.ICEPortRangeStart, conf.RTC.ICEPortRangeEnd)
+	if opts.IncludeIngress {
+		fmt.Printf(" * %d - for RTMP Ingress\n", DefaultRTMPPort)
+		fmt.Printf(" * %d/UDP - for WHIP Ingress WebRTC\n", DefaultRTCUDPPort)
+	}
+
 	fmt.Println()
 	fmt.Printf("Server URL: wss://%s\n", opts.Domain)
+	if opts.IncludeIngress {
+		fmt.Printf("RTMP Ingress URL: rtmp://%s/x\n", opts.Domain)
+		if opts.WHIPDomain != "" {
+			fmt.Printf("WHIP Ingress URL: https://%s/w\n", opts.WHIPDomain)
+		}
+	}
 	var apiKey, apiSecret string
 	for k, s := range conf.Keys {
 		apiKey = k
@@ -193,7 +303,7 @@ func getLatestVersion() (string, error) {
 	return release.GetTagName(), nil
 }
 
-func generateLiveKit(opts *Options, baseDir string) (*config.Config, error) {
+func generateLiveKit(opts *ServerOptions, baseDir string) (*config.Config, error) {
 	apiKey := utils.NewGuid(utils.APIKeyPrefix)
 	apiSecret := utils.RandomSecret()
 	conf := config.Config{
@@ -201,13 +311,18 @@ func generateLiveKit(opts *Options, baseDir string) (*config.Config, error) {
 			apiKey: apiSecret,
 		},
 		Logging: config.LoggingConfig{
-			JSON: false,
+			Config: logger.Config{
+				JSON: false,
+			},
 		},
+		BindAddresses: []string{""},
 		RTC: config.RTCConfig{
-			UseExternalIP:     true,
-			TCPPort:           7881,
-			ICEPortRangeStart: 50000,
-			ICEPortRangeEnd:   60000,
+			RTCConfig: rtcconfig.RTCConfig{
+				UseExternalIP:     true,
+				TCPPort:           7881,
+				ICEPortRangeStart: 50000,
+				ICEPortRangeEnd:   60000,
+			},
 		},
 		Port: 7880,
 		TURN: config.TURNConfig{
@@ -218,18 +333,20 @@ func generateLiveKit(opts *Options, baseDir string) (*config.Config, error) {
 			UDPPort:     443,
 		},
 	}
+	conf.Redis = *opts.RedisConfig()
 	if opts.LocalRedis {
-		conf.Redis = config.RedisConfig{
-			Address: "localhost:6379",
-		}
 		// copy redis over to basedir
 		opts.Files.RedisConf = path.Join(baseDir, "redis.conf")
 		if err := os.WriteFile(opts.Files.RedisConf, []byte(templates.RedisConf), filePerms); err != nil {
 			return nil, err
 		}
-	} else {
-		conf.Redis = config.RedisConfig{
-			Address: "<redis-host>:6379",
+	}
+	if opts.IncludeIngress {
+		conf.Ingress.RTMPBaseURL = fmt.Sprintf("rtmp://%s:%d/x", opts.Domain, DefaultRTMPPort)
+		if opts.WHIPDomain != "" {
+			conf.Ingress.WHIPBaseURL = fmt.Sprintf("https://%s/w", opts.WHIPDomain)
+		} else {
+			conf.Ingress.WHIPBaseURL = fmt.Sprintf("http://%s/w", opts.WHIPDomain)
 		}
 	}
 
@@ -242,7 +359,7 @@ func generateLiveKit(opts *Options, baseDir string) (*config.Config, error) {
 	return &conf, os.WriteFile(opts.Files.LiveKit, data, filePerms)
 }
 
-func generateCaddy(opts *Options, baseDir string) error {
+func generateCaddy(opts *ServerOptions, baseDir string) error {
 	tmpl, err := template.New("caddy").Parse(templates.CaddyConfigTemplate)
 	if err != nil {
 		return err
@@ -256,7 +373,7 @@ func generateCaddy(opts *Options, baseDir string) error {
 	return tmpl.Execute(f, opts)
 }
 
-func generateDocker(opts *Options, baseDir string) error {
+func generateDocker(opts *ServerOptions, baseDir string) error {
 	tmpl, err := template.New("docker").Parse(templates.DockerComposeBaseTemplate)
 	if err != nil {
 		return err
@@ -267,7 +384,31 @@ func generateDocker(opts *Options, baseDir string) error {
 	}
 
 	if opts.LocalRedis {
-		buf.WriteString(templates.DockerComposeRedis)
+		tmpl, err := template.New("redis").Parse(templates.DockerComposeRedisTemplate)
+		if err != nil {
+			return err
+		}
+		if err := tmpl.Execute(&buf, opts); err != nil {
+			return err
+		}
+	}
+	if opts.IncludeEgress {
+		tmpl, err := template.New("egress").Parse(templates.DockerComposeEgressTemplate)
+		if err != nil {
+			return err
+		}
+		if err := tmpl.Execute(&buf, opts); err != nil {
+			return err
+		}
+	}
+	if opts.IncludeIngress {
+		tmpl, err := template.New("ingress").Parse(templates.DockerComposeIngressTemplate)
+		if err != nil {
+			return err
+		}
+		if err := tmpl.Execute(&buf, opts); err != nil {
+			return err
+		}
 	}
 	opts.Files.Docker = path.Join(baseDir, "docker-compose.yaml")
 	return os.WriteFile(opts.Files.Docker, buf.Bytes(), filePerms)
@@ -288,4 +429,16 @@ func prefixLines(input string, prefix string) string {
 		output += prefix + line + "\n"
 	}
 	return output
+}
+
+func getAPIKeySecret(conf *config.Config) (string, string, error) {
+	var apiKey, apiSecret string
+	for k, s := range conf.Keys {
+		apiKey = k
+		apiSecret = s
+	}
+	if apiKey == "" {
+		return "", "", errors.New("no api key found in config")
+	}
+	return apiKey, apiSecret, nil
 }

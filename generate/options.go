@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/livekit/deploy/generate/templates"
+	"github.com/livekit/protocol/redis"
 )
 
 type StartupScriptKind string
@@ -52,18 +53,35 @@ func CloudInitFromDescription(str string) StartupScriptKind {
 	}
 }
 
-type Options struct {
-	Domain        string
-	TURNDomain    string
-	ServerVersion string
-	LocalRedis    bool
-	CloudInit     StartupScriptKind
+// ServerOptions contains options for the SFU
+type ServerOptions struct {
+	IncludeEgress  bool
+	IncludeIngress bool
+	Domain         string
+	TURNDomain     string
+	WHIPDomain     string // optional, only if WHIP is desired
+	ServerVersion  string
+	ZeroSSLAPIKey  string
+	LocalRedis     bool
+	CloudInit      StartupScriptKind
 
 	Files ConfigFiles
 }
 
+func (o *ServerOptions) RedisConfig() *redis.RedisConfig {
+	c := &redis.RedisConfig{}
+	if o.LocalRedis {
+		c.Address = "localhost:6379"
+	} else {
+		c.Address = "<redis-host>:6379"
+	}
+	return c
+}
+
 type ConfigFiles struct {
 	LiveKit   string
+	Egress    string
+	Ingress   string
 	Caddy     string
 	Docker    string
 	RedisConf string

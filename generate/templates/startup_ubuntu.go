@@ -35,6 +35,16 @@ write_files:
     content: |
 {{.RedisConf}}
 {{- end }}
+{{- if .EgressConf }}
+  - path: {{.InstallPrefix}}/egress.yaml
+    content: |
+{{.EgressConf}}
+{{- end }}
+{{- if .IngressConf }}
+  - path: {{.InstallPrefix}}/ingress.yaml
+    content: |
+{{.IngressConf}}
+{{- end }}
 
 runcmd:
   - curl -L "https://github.com/docker/compose/releases/download/v2.2.3/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose

@@ -257,7 +257,7 @@ func printInstructions(opts *ServerOptions, conf *config.Config) error {
 	fmt.Println(" * 443 - primary HTTPS and TURN/TLS")
 	fmt.Println(" * 80 - for TLS issuance")
 	fmt.Printf(" * %d - for WebRTC over TCP\n", conf.RTC.TCPPort)
-	fmt.Println(" * 443/UDP - for TURN/UDP")
+	fmt.Printf(" * %d/UDP - for TURN/UDP\n", conf.TURN.UDPPort)
 	fmt.Printf(" * %d-%d/UDP - for WebRTC over UDP\n", conf.RTC.ICEPortRangeStart, conf.RTC.ICEPortRangeEnd)
 	if opts.IncludeIngress {
 		fmt.Printf(" * %d - for RTMP Ingress\n", DefaultRTMPPort)
@@ -330,7 +330,7 @@ func generateLiveKit(opts *ServerOptions, baseDir string) (*config.Config, error
 			Domain:      opts.TURNDomain,
 			ExternalTLS: true,
 			TLSPort:     5349,
-			UDPPort:     443,
+			UDPPort:     3478,
 		},
 	}
 	conf.Redis = *opts.RedisConfig()

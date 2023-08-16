@@ -37,6 +37,8 @@ const DockerComposeEgressTemplate = `  egress:
     network_mode: "host"
     volumes:
       - ./egress.yaml:/etc/egress.yaml
+    cap_add:
+      - CAP_SYS_ADMIN
 `
 
 const DockerComposeIngressTemplate = `  ingress:

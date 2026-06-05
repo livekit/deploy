@@ -6,7 +6,7 @@ require (
 	github.com/google/go-github/v42 v42.0.0
 	github.com/livekit/livekit-server v1.4.4-0.20230629032259-4952c641b3a7
 	github.com/livekit/mediatransportutil v0.0.0-20230612070454-d5299b956135
-	github.com/livekit/protocol v1.46.6-0.20260604204719-ab1b54f925cf
+	github.com/livekit/protocol v1.46.6-0.20260604233857-6b0178b3af2a
 	github.com/manifoldco/promptui v0.9.0
 	github.com/stretchr/testify v1.11.1
 	github.com/urfave/cli/v2 v2.25.7
@@ -23,7 +23,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
-	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/dennwc/iters v1.2.2 // indirect
 	github.com/frostbyte73/core v0.1.1 // indirect
 	github.com/fsnotify/fsnotify v1.10.1 // indirect
@@ -39,7 +39,7 @@ require (
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/lithammer/shortuuid/v4 v4.2.0 // indirect
 	github.com/livekit/mageutil v0.0.0-20250511045019-0f1ff63f7731 // indirect
-	github.com/livekit/psrpc v0.7.1 // indirect
+	github.com/livekit/psrpc v0.7.2-0.20260604225640-4bab4033deca // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/nats-io/nats.go v1.52.0 // indirect
 	github.com/nats-io/nkeys v0.4.16 // indirect
@@ -69,7 +69,7 @@ require (
 	github.com/pion/webrtc/v3 v3.2.11 // indirect
 	github.com/pion/webrtc/v4 v4.2.14 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/puzpuzpuz/xsync/v4 v4.5.0 // indirect
 	github.com/redis/go-redis/v9 v9.20.0 // indirect
 	github.com/rogpeppe/go-internal v1.10.0 // indirect

@@ -52,7 +52,7 @@ func generateIngress(opts *ServerOptions, lkConf *config.Config, baseDir string)
 	ingressConf.RTMPPort = DefaultRTMPPort
 	ingressConf.WHIPPort = DefaultWHIPPort
 	ingressConf.HTTPRelayPort = DefaultHTTPRelayPort
-	ingressConf.RTCConfig.UDPPort = DefaultRTCUDPPort
+	ingressConf.RTCConfig.UDPPort = rtcconfig.PortRange{Start: DefaultRTCUDPPort}
 	ingressConf.RTCConfig.UseExternalIP = true
 
 	// write config

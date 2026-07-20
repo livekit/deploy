@@ -29,7 +29,7 @@ func generateLocal() error {
 		RTC: config.RTCConfig{
 			RTCConfig: rtcconfig.RTCConfig{
 				TCPPort:       7881,
-				UDPPort:       7882,
+				UDPPort:       rtcconfig.PortRange{Start: 7882},
 				UseExternalIP: false,
 			},
 		},
@@ -51,7 +51,7 @@ func generateLocal() error {
 	}
 
 	// get local ip
-	ips, err := rtcconfig.GetLocalIPAddresses(false)
+	ips, err := rtcconfig.GetLocalIPAddresses(false, false, nil, nil)
 	if err != nil {
 		return err
 	}

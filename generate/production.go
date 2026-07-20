@@ -11,7 +11,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/google/go-github/v42/github"
+	"github.com/google/go-github/v82/github"
 	"github.com/manifoldco/promptui"
 	"gopkg.in/yaml.v3"
 

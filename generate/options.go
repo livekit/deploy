@@ -55,15 +55,17 @@ func CloudInitFromDescription(str string) StartupScriptKind {
 
 // ServerOptions contains options for the SFU
 type ServerOptions struct {
-	IncludeEgress  bool
-	IncludeIngress bool
-	Domain         string
-	TURNDomain     string
-	WHIPDomain     string // optional, only if WHIP is desired
-	ServerVersion  string
-	ZeroSSLAPIKey  string
-	LocalRedis     bool
-	CloudInit      StartupScriptKind
+	IncludeEgress   bool
+	IncludeIngress  bool
+	Domain          string
+	TURNDomain      string
+	WHIPDomain      string // optional, only if WHIP is desired
+	ServerVersion   string
+	ZeroSSLAPIKey   string
+	LocalRedis      bool
+	CloudInit       StartupScriptKind
+	CustomApiKey    string
+	CustomApiSecret string
 
 	Files ConfigFiles
 }

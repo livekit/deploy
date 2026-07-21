@@ -91,6 +91,41 @@ func generateProduction() error {
 		return err
 	}
 
+	customKeySecret := false
+	customKeySecretPrompt := promptui.Select{
+		Label: "Use custom API key and secret?",
+		Items: []string{
+			"No - (we'll generate a random one)",
+			"Yes",
+		},
+		Stdout: BellSkipper,
+	}
+	idx, _, err = customKeySecretPrompt.Run()
+	if err != nil {
+		return err
+	}
+	if idx == 1 {
+		customKeySecret = true
+	}
+
+	if customKeySecret {
+		prompt = promptui.Prompt{
+			Label:  "Custom API key",
+			Stdout: BellSkipper,
+		}
+		if opts.CustomApiKey, err = prompt.Run(); err != nil {
+			return err
+		}
+
+		prompt = promptui.Prompt{
+			Label:  "Custom API secret",
+			Stdout: BellSkipper,
+		}
+		if opts.CustomApiSecret, err = prompt.Run(); err != nil {
+			return err
+		}
+	}
+
 	if opts.IncludeIngress {
 		prompt = promptui.Prompt{
 			Label: "Ingress WHIP domain name (optional, i.e. livekit-whip.myhost.com)",
@@ -304,8 +339,14 @@ func getLatestVersion() (string, error) {
 }
 
 func generateLiveKit(opts *ServerOptions, baseDir string) (*config.Config, error) {
-	apiKey := utils.NewGuid(utils.APIKeyPrefix)
-	apiSecret := utils.RandomSecret()
+	var apiKey, apiSecret string
+	if opts.CustomApiKey != "" && opts.CustomApiSecret != "" {
+		apiKey = opts.CustomApiKey
+		apiSecret = opts.CustomApiSecret
+	} else {
+		apiKey = utils.NewGuid(utils.APIKeyPrefix)
+		apiSecret = utils.RandomSecret()
+	}
 	conf := config.Config{
 		Keys: map[string]string{
 			apiKey: apiSecret,
